@@ -70,9 +70,9 @@ Caveats: free routes are rate-limited per model rather than per account and occa
 The default roster lives in `src/lib/board.ts`:
 
 ```ts
-{ id: 'opus',   model: 'anthropic/claude-opus-4', label: 'Claude Opus 4' }
-{ id: 'gemini', model: 'google/gemini-2.5-pro',   label: 'Gemini 2.5 Pro' }
-{ id: 'qwen',   model: 'qwen/qwen3-max',          label: 'Qwen 3 Max' }
+{ id: 'opus',   model: 'anthropic/claude-opus-4.7',          label: 'Claude Opus 4.7' }
+{ id: 'gemini', model: 'google/gemini-3.1-pro-preview',      label: 'Gemini 3.1 Pro' }
+{ id: 'qwen',   model: 'qwen/qwen3-max',                     label: 'Qwen 3 Max' }
 ```
 
 Two override paths:
@@ -81,6 +81,65 @@ Two override paths:
 - **UI.** The settings panel toggles members on/off, picks a different chairman, and assigns lenses without restarting the server.
 
 The chairman defaults to the first member if `CHAIRMAN_ID` is unset or invalid.
+
+### Notable models on OpenRouter
+
+A picker organised by tier. All slugs verified against the OpenRouter catalogue on 2026-06-10. Prices are USD per million tokens, input / output.
+
+**Paid frontiers:**
+
+| Slug                                    | Ctx  | $/Mtok in / out | Notes                                   |
+| --------------------------------------- | ---- | --------------- | --------------------------------------- |
+| `anthropic/claude-opus-4.7`             | 1M   | 5 / 25          | Anthropic flagship. Decisive synthesis. |
+| `anthropic/claude-opus-4.8`             | 1M   | 5 / 25          | Newest Anthropic, same price as 4.7.    |
+| `anthropic/claude-sonnet-4.6`           | 1M   | 3 / 15          | Best chairman pick — see below.         |
+| `openai/gpt-5.4`                        | 1M+  | 2.5 / 15        | Strong synthesiser, 1M+ context.        |
+| `openai/gpt-5.5`                        | 1M+  | 5 / 30          | Newest GPT. Output is the cost driver.  |
+| `google/gemini-3.1-pro-preview`         | 1M   | 2 / 12          | Largest practical context, cheap.       |
+| `google/gemini-3.5-flash`               | 1M   | 1.5 / 9         | Fast mid-tier, structured-output ok.    |
+| `x-ai/grok-4.20`                        | 2M   | 1.25 / 2.5      | 2M ctx + cheap + opinionated voice.     |
+| `qwen/qwen3-max`                        | 262k | 0.78 / 3.9      | Alibaba flagship.                       |
+| `meta-llama/llama-4-maverick`           | 1M   | 0.15 / 0.6      | Llama 4 flagship — cheapest 1M ctx.     |
+| `mistralai/mistral-large-2512`          | 262k | 0.5 / 1.5       | EU-hosted, cheapest 200k+ option.       |
+| `cohere/command-a`                      | 256k | 2.5 / 10        | Cohere flagship.                        |
+
+**Reasoning models** — use as panel members for deep thinking. Avoid as chairman: visible chain-of-thought can leak into the streamed verdict and break the markdown.
+
+| Slug                                    | Ctx  | $/Mtok in / out | Notes                                   |
+| --------------------------------------- | ---- | --------------- | --------------------------------------- |
+| `openai/o3`                             | 200k | 2 / 8           | RL-tuned reasoning.                     |
+| `openai/o4-mini`                        | 200k | 1.1 / 4.4       | Cheaper reasoning tier.                 |
+| `deepseek/deepseek-r1`                  | 164k | 0.7 / 2.5       | Open-weights reasoning.                 |
+| `anthropic/claude-haiku-4.5`            | 200k | 1 / 5           | Smallest Anthropic. Not a reasoner, but fast and cheap. |
+
+**Free tier** (`:free` suffix, $0 per token, shared 20 RPM / 50–1 000 RPD ceiling — see "Running on the free tier"):
+
+| Slug                                              | Ctx  | Notes                                        |
+| ------------------------------------------------- | ---- | -------------------------------------------- |
+| `openai/gpt-oss-120b:free`                        | 131k | Best free synthesiser → best free chairman.  |
+| `meta-llama/llama-3.3-70b-instruct:free`          | 131k | Tight format-following.                      |
+| `qwen/qwen3-next-80b-a3b-instruct:free`           | 262k | Balanced free option, broad ctx.             |
+| `nvidia/nemotron-3-ultra-550b-a55b:free`          | 1M   | 550B params, 1M ctx, slower.                 |
+| `nvidia/nemotron-3-super-120b-a12b:free`          | 1M   | Mid-tier Nemotron, 1M ctx.                   |
+| `moonshotai/kimi-k2.6:free`                       | 262k | Diverse RLHF, fast.                          |
+| `nousresearch/hermes-3-llama-3.1-405b:free`       | 131k | 405B params, slow but strong.                |
+| `google/gemma-4-31b-it:free`                      | 262k | Google open-weights tier.                    |
+| `openai/gpt-oss-20b:free`                         | 131k | Cheap-feeling fallback for the 120B.         |
+
+A wider list (23 free models, 339 total) is at [openrouter.ai/models?max_price=0](https://openrouter.ai/models?max_price=0).
+
+### Picking a chairman
+
+The chairman gets every answer + every peer review and must produce a 5-section verdict without hedging. That favours format-strict synthesis models over reasoning models or specialists.
+
+| Use case                                   | Recommended chairman                                |
+| ------------------------------------------ | --------------------------------------------------- |
+| Default (credits available)                | `anthropic/claude-sonnet-4.6`                       |
+| Maximum quality, no budget cap             | `anthropic/claude-opus-4.7` or `anthropic/claude-opus-4.8` |
+| Long panel context (5+ members × ≥ 10k tokens) | `google/gemini-3.1-pro-preview` or `x-ai/grok-4.20` |
+| Running fully free                         | `openai/gpt-oss-120b:free`                          |
+
+Avoid as chairman: reasoning models (`o3`, `o4-mini`, `deepseek-r1`) — their thinking trace leaks; specialised models (`qwen3-coder`, `gpt-5-codex`) — over-fit to code; and members of the panel that have already answered, when you can afford a separate chair (eliminates self-bias).
 
 ---
 
