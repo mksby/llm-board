@@ -88,10 +88,30 @@ The default roster lives in `src/lib/board.ts`:
 
 Two override paths:
 
-- **Env var.** `BOARD_ROSTER="id|slug|label,id|slug|label,..."` and optional `CHAIRMAN_ID=id`. The pipe separator lets OpenRouter `:free` slugs round-trip without ambiguity.
-- **UI.** The settings panel toggles members on/off and picks a different chairman without restarting the server.
+- **Env var.** `BOARD_ROSTER="id|slug|label[|lens],..."` and optional `CHAIRMAN_ID=id`. The pipe separator lets OpenRouter `:free` slugs round-trip without ambiguity. The optional fourth field is a thinking-style lens (see below).
+- **UI.** The settings panel toggles members on/off, picks a different chairman, and assigns lenses without restarting the server.
 
 The chairman defaults to the first member if `CHAIRMAN_ID` is unset or invalid.
+
+---
+
+## Thinking-style lenses
+
+Multi-model diversity catches some blind spots automatically — different models, different RLHF, different blind spots. The harness layers a second axis of diversity on top: an optional per-member system prompt that biases the model toward a single thinking style. Other members are told they'll cover other angles, so each leans fully into its assigned stance instead of hedging.
+
+| Lens                  | Posture                                                                  |
+| --------------------- | ------------------------------------------------------------------------ |
+| `contrarian`          | Hunts for what will fail. Leads with the strongest objection.            |
+| `first-principles`    | Strips assumptions. Reframes the question if the question is wrong.      |
+| `expansionist`        | Hunts for unseen upside. Assumes risk is someone else's job.             |
+| `outsider`            | Fresh eyes. Catches curse-of-knowledge blind spots and unclear terms.    |
+| `executor`            | Only cares about Monday morning. Names the first concrete step.          |
+
+The five together create three useful tensions (contrarian vs expansionist, first-principles vs executor, with the outsider keeping the panel honest). Assigning all five gives you the full council; assigning none keeps the harness in pure model-diversity mode. Mix freely.
+
+Lenses apply to stage 1 only — peer review (stage 2) is always run with a neutral reviewer prompt so judgement is not biased by stance.
+
+Set via env (4th segment of each `BOARD_ROSTER` entry) or via the lens dropdown in the UI settings panel.
 
 ---
 
@@ -126,6 +146,7 @@ src/
 │   ├── anonymize.ts             Fisher-Yates + reveal mapping
 │   ├── transcript.ts            persist runs to disk
 │   ├── types.ts                 shared Zod schemas
+│   ├── lenses.ts                thinking-style system prompts
 │   └── prompts/
 │       ├── reviewer.ts
 │       └── chairman.ts
