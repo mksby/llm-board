@@ -4,7 +4,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'llm-board',
   description:
-    'A board of LLMs answers your hard questions side-by-side, peer-reviews each other anonymously, then a chairman synthesises the final verdict.',
+    'A peer-review harness for multi-LLM panels — independent answers, anonymous review, synthesised verdict.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
