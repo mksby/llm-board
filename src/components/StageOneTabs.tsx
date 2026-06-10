@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { BoardMember } from '@/lib/board';
+import { LENSES } from '@/lib/lenses';
 
 interface Props {
   board: readonly BoardMember[];
@@ -42,6 +43,11 @@ export function StageOneTabs({ board, responses, streaming, errors }: Props) {
               }`}
             >
               {m.label}
+              {m.lens && (
+                <span className="text-board-muted ml-1.5 text-[10px] uppercase tracking-wide">
+                  {LENSES[m.lens].label}
+                </span>
+              )}
               {isLive && <span className="bg-board-accent ml-2 inline-block size-2 animate-pulse rounded-full" />}
               {hasError && <span className="ml-2 inline-block size-2 rounded-full bg-red-500" />}
             </button>
