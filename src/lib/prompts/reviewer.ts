@@ -9,6 +9,7 @@ export function buildReviewerSystemPrompt(): string {
     'You receive a question along with anonymised responses from every member of the board (including possibly your own — you cannot tell which is which).',
     'Your job is to rank them on the quality of reasoning, identify the strongest and the weakest, and flag what every response missed.',
     'Be specific. Reference responses by their letter (A, B, C, ...). Do not hedge.',
+    'Keep the prose fields (justifications and what-all-missed) tight — under 200 words across all three combined.',
   ].join(' ');
 }
 
@@ -28,6 +29,6 @@ export function buildReviewerUserPrompt({ question, anonymized }: ReviewerInput)
     '',
     blocks,
     '',
-    'Return your review as JSON matching the schema you have been given. Be direct. Do not include any text outside the JSON.',
+    'Return your review as JSON matching the schema you have been given. Be direct. Keep the three prose fields under 200 words combined. Do not include any text outside the JSON.',
   ].join('\n');
 }
