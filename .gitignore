@@ -1,0 +1,30 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# next.js
+.next
+out
+next-env.d.ts
+
+# build artefacts
+dist
+build
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# runtime data
+data/transcripts/*
+!data/transcripts/.gitkeep
+
+# os
+.DS_Store
+
+# editor
+.vscode
+.idea
+*.swp
