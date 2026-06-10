@@ -16,7 +16,7 @@ Requests are routed through OpenRouter, so the panel composition is a config str
 
 **Stage 3 — Chairman synthesis.** The designated chairman receives the de-anonymised answers and every peer review, then streams a markdown verdict in five sections: agreements, splits, blind spots caught in review, recommendation, first step.
 
-The panel size is flexible. Minimum two members; maximum twenty-six (limited by the anonymisation alphabet). Three is the default.
+The panel size is flexible. Minimum two members; maximum twenty-six (limited by the anonymisation alphabet). The default is five — one model per thinking-style lens (see "Thinking-style lenses" below), running on the OpenRouter free tier out of the box.
 
 ---
 
@@ -53,13 +53,7 @@ One full round costs `2N + 1` requests, where N is the panel size:
 | 3          | 7              | ≈ 7                          | ≈ 140                          |
 | 5          | 11             | ≈ 4                          | ≈ 90                           |
 
-A ready-to-paste free roster — three providers, three lineages (Meta, Alibaba, OpenAI open-weights):
-
-```bash
-BOARD_ROSTER="llama|meta-llama/llama-3.3-70b-instruct:free|Llama 3.3 70B,qwen|qwen/qwen3-next-80b-a3b-instruct:free|Qwen 3 Next 80B,gptoss|openai/gpt-oss-120b:free|GPT-OSS 120B"
-```
-
-Browse the rest at [openrouter.ai/models?max_price=0](https://openrouter.ai/models?max_price=0). Free options currently include NVIDIA Nemotron (1M context), Google Gemma, Nous Hermes, Moonshot Kimi, additional Qwen and Llama variants.
+The default roster (in `src/lib/board.ts`) is already a free-tier full council — five members, one per lens, no spend required. Browse the wider catalogue at [openrouter.ai/models?max_price=0](https://openrouter.ai/models?max_price=0); other free options today include Google Gemma 4, Nous Hermes 3 405B, additional Qwen and Llama variants.
 
 Caveats: free routes are rate-limited per model rather than per account and occasionally cold-start slowly. If a member fails mid-round the harness logs the error and proceeds with whoever responded. A round needs at least two successful answers to enter stage 2.
 
@@ -67,13 +61,17 @@ Caveats: free routes are rate-limited per model rather than per account and occa
 
 ## Configuring the panel
 
-The default roster lives in `src/lib/board.ts`:
+The default roster lives in `src/lib/board.ts` — five free-tier models, one per lens, default chairman is GPT-OSS 120B (the strongest free synthesiser):
 
 ```ts
-{ id: 'opus',   model: 'anthropic/claude-opus-4.7',          label: 'Claude Opus 4.7' }
-{ id: 'gemini', model: 'google/gemini-3.1-pro-preview',      label: 'Gemini 3.1 Pro' }
-{ id: 'qwen',   model: 'qwen/qwen3-max',                     label: 'Qwen 3 Max' }
+{ id: 'llama',    model: 'meta-llama/llama-3.3-70b-instruct:free',   lens: 'contrarian'       }
+{ id: 'qwen',     model: 'qwen/qwen3-next-80b-a3b-instruct:free',    lens: 'first-principles' }
+{ id: 'gptoss',   model: 'openai/gpt-oss-120b:free',                 lens: 'expansionist'     }  // also chairman
+{ id: 'nemotron', model: 'nvidia/nemotron-3-ultra-550b-a55b:free',   lens: 'outsider'         }
+{ id: 'kimi',     model: 'moonshotai/kimi-k2.6:free',                lens: 'executor'         }
 ```
+
+A 5-member round costs 11 OpenRouter requests — roughly 4 rounds/day on the bare free tier or ~90 rounds/day after a $10 credit top-up. To run on paid frontier models instead, drop one of the presets from `.env.example` into `.env.local`.
 
 Two override paths:
 

@@ -13,11 +13,49 @@ export interface BoardMember {
 
 export type BoardMemberId = BoardMember['id'];
 
+/**
+ * Default panel: five free-tier models with one thinking-style lens each.
+ * Runs end-to-end on the OpenRouter free tier — no required spend — and
+ * exercises every lens so the UI lights up out of the box.
+ */
 const DEFAULT_BOARD: readonly BoardMember[] = [
-  { id: 'opus', model: 'anthropic/claude-opus-4.7', label: 'Claude Opus 4.7' },
-  { id: 'gemini', model: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
-  { id: 'qwen', model: 'qwen/qwen3-max', label: 'Qwen 3 Max' },
+  {
+    id: 'llama',
+    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    label: 'Llama 3.3 70B',
+    lens: 'contrarian',
+  },
+  {
+    id: 'qwen',
+    model: 'qwen/qwen3-next-80b-a3b-instruct:free',
+    label: 'Qwen 3 Next 80B',
+    lens: 'first-principles',
+  },
+  {
+    id: 'gptoss',
+    model: 'openai/gpt-oss-120b:free',
+    label: 'GPT-OSS 120B',
+    lens: 'expansionist',
+  },
+  {
+    id: 'nemotron',
+    model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+    label: 'Nemotron 3 Ultra',
+    lens: 'outsider',
+  },
+  {
+    id: 'kimi',
+    model: 'moonshotai/kimi-k2.6:free',
+    label: 'Kimi K2.6',
+    lens: 'executor',
+  },
 ];
+
+/**
+ * Preferred default chairman when the active roster contains it. GPT-OSS 120B
+ * is the strongest free-tier synthesiser — see README "Picking a chairman".
+ */
+const PREFERRED_DEFAULT_CHAIRMAN: BoardMemberId = 'gptoss';
 
 /**
  * Parse an env override of the form
@@ -59,8 +97,13 @@ export const BOARD: readonly BoardMember[] = parsed ?? DEFAULT_BOARD;
 
 const envChairman = process.env.CHAIRMAN_ID?.trim();
 
-export const DEFAULT_CHAIRMAN_ID: BoardMemberId =
-  envChairman && BOARD.some((m) => m.id === envChairman) ? envChairman : (BOARD[0]?.id ?? 'opus');
+function resolveDefaultChairman(): BoardMemberId {
+  if (envChairman && BOARD.some((m) => m.id === envChairman)) return envChairman;
+  if (BOARD.some((m) => m.id === PREFERRED_DEFAULT_CHAIRMAN)) return PREFERRED_DEFAULT_CHAIRMAN;
+  return BOARD[0]?.id ?? PREFERRED_DEFAULT_CHAIRMAN;
+}
+
+export const DEFAULT_CHAIRMAN_ID: BoardMemberId = resolveDefaultChairman();
 
 export function findMember(id: BoardMemberId, board: readonly BoardMember[] = BOARD): BoardMember {
   const m = board.find((x) => x.id === id);
