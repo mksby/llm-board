@@ -68,5 +68,13 @@ export type Stage1Event =
   | { type: 'start'; memberId: string }
   | { type: 'token'; memberId: string; text: string }
   | { type: 'done'; memberId: string }
+  | {
+      type: 'retry';
+      memberId: string;
+      attempt: number;
+      maxAttempts: number;
+      waitMs: number;
+      reason: string;
+    }
   | { type: 'error'; memberId: string; error: string }
   | { type: 'finish' };

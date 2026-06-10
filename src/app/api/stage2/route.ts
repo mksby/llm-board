@@ -3,6 +3,12 @@ import { z } from 'zod';
 import { anonymize } from '@/lib/anonymize';
 import { modelFor } from '@/lib/openrouter';
 import { buildReviewerSystemPrompt, buildReviewerUserPrompt } from '@/lib/prompts/reviewer';
+import {
+  extractErrorMessage,
+  getRetryAfterMs,
+  isRetryableError,
+  RETRY_POLICY,
+} from '@/lib/retry-after';
 import { Stage2Request, ReviewPayload, type ReviewPayloadT } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -63,22 +69,33 @@ export async function POST(req: Request) {
 
   const reviews = await Promise.all(
     board.map(async (member) => {
-      try {
-        const result = await generateObject({
-          model: modelFor(member.model),
-          schema: REVIEW_SCHEMA,
-          system: buildReviewerSystemPrompt(),
-          prompt: buildReviewerUserPrompt({ question, anonymized }),
-        });
-        return { reviewerId: member.id, payload: result.object as ReviewPayloadT };
-      } catch (err) {
-        // One reviewer failing should not kill the round. We surface the
-        // failure to the client and let the chairman work with what we have.
-        return {
-          reviewerId: member.id,
-          error: err instanceof Error ? err.message : String(err),
-        };
+      let lastErr: unknown;
+      let totalWaitMs = 0;
+      for (let attempt = 1; attempt <= RETRY_POLICY.maxAttempts; attempt++) {
+        try {
+          const result = await generateObject({
+            model: modelFor(member.model),
+            schema: REVIEW_SCHEMA,
+            system: buildReviewerSystemPrompt(),
+            prompt: buildReviewerUserPrompt({ question, anonymized }),
+            maxRetries: 0,
+          });
+          return { reviewerId: member.id, payload: result.object as ReviewPayloadT };
+        } catch (err) {
+          lastErr = err;
+          if (!isRetryableError(err) || attempt >= RETRY_POLICY.maxAttempts) break;
+          const waitMs = Math.min(
+            getRetryAfterMs(err) ?? RETRY_POLICY.defaultBackoffMs(attempt),
+            RETRY_POLICY.perAttemptCapMs,
+          );
+          if (totalWaitMs + waitMs > RETRY_POLICY.totalCapMs) break;
+          totalWaitMs += waitMs;
+          await new Promise((r) => setTimeout(r, waitMs));
+        }
       }
+      // One reviewer failing should not kill the round. The chairman synthesises
+      // from whoever responded.
+      return { reviewerId: member.id, error: extractErrorMessage(lastErr) };
     }),
   );
 

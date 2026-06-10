@@ -129,6 +129,13 @@ export function BoardConsole({ initialBoard, initialChairmanId }: Props) {
             const evt = JSON.parse(trimmed) as Stage1Event;
             if (evt.type === 'start') {
               appendLog({ stage: 1, memberLabel: labelFor(evt.memberId), message: 'streaming…' });
+            } else if (evt.type === 'retry') {
+              appendLog({
+                stage: 1,
+                level: 'warn',
+                memberLabel: labelFor(evt.memberId),
+                message: `rate-limited · waiting ${Math.round(evt.waitMs / 1000)}s before attempt ${evt.attempt}/${evt.maxAttempts} · ${shortenError(evt.reason)}`,
+              });
             } else if (evt.type === 'token') {
               collectedResponses[evt.memberId] = (collectedResponses[evt.memberId] ?? '') + evt.text;
               const snapshot = { ...collectedResponses };
