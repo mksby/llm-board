@@ -8,20 +8,7 @@ Requests are routed through OpenRouter, so the panel composition is a config str
 
 ## How it works
 
-```
-                                                                ┌─────────────────┐
-   question  ──┬──▶  model 1  ─┐                                │  Verdict        │
-               │               │                                │                 │
-               ├──▶  model 2   ├─▶  anonymise  ─▶  rank  ─▶ ▶▶  │  · agreements   │
-               │               │     A · B · C       blind      │  · splits       │
-               ├──▶  model 3  ─┘                                │  · blind spots  │
-               │      ...                                       │  · recommend    │
-               └──▶  model N                                    │  · first step   │
-                                                                └─────────────────┘
-
-       stage 1                   stage 2                   stage 3
-   independent answers      anonymous peer review     chairman synthesis
-```
+![Three-stage pipeline: a question fans out in parallel to model 1 through model N, their responses are anonymised as A/B/C and fanned back out so every model peer-reviews and ranks the others blind, then a chairman synthesises the final verdict containing agreements, splits, blind spots, a recommendation, and the first concrete step.](docs/how-it-works.png)
 
 **Stage 1 — Independent answers.** Every member receives the question and answers in parallel via `streamText`. Tokens are multiplexed back to the client as NDJSON, one frame per token, tagged with the producing member's id. No member sees the others' answers.
 
