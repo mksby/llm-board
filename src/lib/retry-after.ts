@@ -23,7 +23,14 @@ export const RETRY_POLICY = {
    * shared upstream providers (Venice, Crucible, …) don't get N simultaneous
    * hits and start handing out 429s pre-emptively.
    */
-  staggerBetweenMembersMs: 600,
+  staggerBetweenMembersMs: 1_500,
+  /**
+   * Hard cap on simultaneously in-flight OpenRouter calls within a single
+   * stage. Even with stagger, free-tier upstreams throttle on sliding-window
+   * request counts; keeping this at 2 means at most two of N members are
+   * actively hitting the gateway at any moment.
+   */
+  maxConcurrentRequests: 2,
   /**
    * Safety margin added on top of the upstream's Retry-After. The rate-limit
    * window doesn't always clear exactly when the header promises it will.

@@ -10,6 +10,7 @@ import {
   isRetryableError,
   RETRY_POLICY,
 } from '@/lib/retry-after';
+import { Semaphore } from '@/lib/semaphore';
 import { Stage2Request, ReviewPayload, type ReviewPayloadT } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -68,38 +69,46 @@ export async function POST(req: Request) {
   const { shuffled, reveal } = anonymize(items);
   const anonymized = shuffled.map((s) => ({ key: s.key, text: s.value }));
 
+  const sema = new Semaphore(RETRY_POLICY.maxConcurrentRequests);
+
   const reviews = await Promise.all(
     board.map(async (member, idx) => {
-      // Same stagger as stage 1 — keeps shared upstreams from seeing a fresh
-      // burst at the moment we move from answers to reviews.
+      // Stagger + concurrency cap — same shape as stage 1, prevents the
+      // reviewer fan-out from re-bursting at upstreams right after answers
+      // finish.
       if (idx > 0) {
         await new Promise((r) => setTimeout(r, idx * RETRY_POLICY.staggerBetweenMembersMs));
       }
 
-      let lastErr: unknown;
-      let totalWaitMs = 0;
-      for (let attempt = 1; attempt <= RETRY_POLICY.maxAttempts; attempt++) {
-        try {
-          const result = await generateObject({
-            model: modelFor(member.model),
-            schema: REVIEW_SCHEMA,
-            system: buildReviewerSystemPrompt(),
-            prompt: buildReviewerUserPrompt({ question, anonymized }),
-            maxRetries: 0,
-          });
-          return { reviewerId: member.id, payload: result.object as ReviewPayloadT };
-        } catch (err) {
-          lastErr = err;
-          if (!isRetryableError(err) || attempt >= RETRY_POLICY.maxAttempts) break;
-          const waitMs = computeRetryWait(getRetryAfterMs(err), attempt);
-          if (totalWaitMs + waitMs > RETRY_POLICY.totalCapMs) break;
-          totalWaitMs += waitMs;
-          await new Promise((r) => setTimeout(r, waitMs));
+      const release = await sema.acquire();
+      try {
+        let lastErr: unknown;
+        let totalWaitMs = 0;
+        for (let attempt = 1; attempt <= RETRY_POLICY.maxAttempts; attempt++) {
+          try {
+            const result = await generateObject({
+              model: modelFor(member.model),
+              schema: REVIEW_SCHEMA,
+              system: buildReviewerSystemPrompt(),
+              prompt: buildReviewerUserPrompt({ question, anonymized }),
+              maxRetries: 0,
+            });
+            return { reviewerId: member.id, payload: result.object as ReviewPayloadT };
+          } catch (err) {
+            lastErr = err;
+            if (!isRetryableError(err) || attempt >= RETRY_POLICY.maxAttempts) break;
+            const waitMs = computeRetryWait(getRetryAfterMs(err), attempt);
+            if (totalWaitMs + waitMs > RETRY_POLICY.totalCapMs) break;
+            totalWaitMs += waitMs;
+            await new Promise((r) => setTimeout(r, waitMs));
+          }
         }
+        // One reviewer failing should not kill the round. The chairman synthesises
+        // from whoever responded.
+        return { reviewerId: member.id, error: extractErrorMessage(lastErr) };
+      } finally {
+        release();
       }
-      // One reviewer failing should not kill the round. The chairman synthesises
-      // from whoever responded.
-      return { reviewerId: member.id, error: extractErrorMessage(lastErr) };
     }),
   );
 
