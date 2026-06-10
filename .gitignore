@@ -31,3 +31,6 @@ data/transcripts/*
 .vscode
 .idea
 *.swp
+
+# claude code local settings (personal, never commit)
+.claude/settings.local.json
