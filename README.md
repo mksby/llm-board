@@ -1,83 +1,159 @@
 # llm-board
 
-A board of LLMs answers your hard questions side-by-side, peer-reviews each other anonymously, then a chairman synthesises the final verdict.
+**Stop asking one model. Convene the board.**
 
-You ask one model, you get one answer. That answer might be great. It might be wrong in a confident-sounding way. The board fan-outs your question across multiple frontier models, has them rank each other's reasoning without knowing who said what, then a designated chairman folds everything into one recommendation that names where the board agrees, where it splits, and what you should actually do.
+Three frontier LLMs. Independent answers. Anonymous peer review. One synthesised verdict — on your machine, in your terminal, on your dime.
+
+---
+
+## Why
+
+Single-model answers sound confident. That's the problem.
+
+One AI gives you one answer. It might be brilliant. It might be wrong in a way you can't catch — because you only saw one perspective.
+
+`llm-board` asks every model on the bench the same question, has them grade each other anonymously, then a chairman folds the whole round into a single verdict that names where the board agrees, where it splits, and what you should actually do.
+
+A board isn't a survey. It's a falsification pass.
+
+---
 
 ## How it works
 
-| Stage | What happens | UI |
-|---|---|---|
-| **1. Independent answers** | Every board member answers the question in parallel | Tab view, token-by-token streaming |
-| **2. Peer review** | Responses are anonymised, every member ranks all answers and flags blind spots | Ranked grid |
-| **3. Chairman synthesis** | The chairman receives de-anonymised answers plus all reviews, streams a structured verdict | Verdict panel |
+```
+                                                                ┌─────────────────┐
+   question  ──┬──▶  Opus    ─┐                                 │  Verdict        │
+               │              │                                 │                 │
+               ├──▶  Gemini   ├─▶  anonymise  ─▶  rank  ─▶  ▶▶  │  · agreements   │
+               │              │     A · B · C       blind       │  · splits       │
+               └──▶  Qwen    ─┘                                  │  · blind spots  │
+                                                                 │  · recommend    │
+                                                                 │  · first step   │
+                                                                 └─────────────────┘
 
-The full transcript of every run (including the anonymisation mapping) is saved under `data/transcripts/`.
+       stage 1                  stage 2                   stage 3
+   independent answers      anonymous peer review     chairman synthesis
+```
 
-## Default board
+**Stage 1 — Independent answers.** Every member of the board answers in parallel. Token-by-token streaming straight into a tab view. No member sees what the others wrote.
 
-| Id | Model |
-|---|---|
-| `opus` | Claude Opus (Anthropic) |
-| `gemini` | Gemini Pro (Google) |
-| `qwen` | Qwen 3 Max (Alibaba) |
+**Stage 2 — Anonymous peer review.** Responses get re-labelled `A`, `B`, `C`. Every member ranks all of them — including, without knowing it, their own. They name the strongest, the weakest, and the one thing every answer missed.
 
-Chairman by default: `opus`. Override either through `BOARD_ROSTER` / `CHAIRMAN_ID` env vars or in the UI settings panel.
+**Stage 3 — Chairman synthesis.** The designated chairman receives the de-anonymised answers and every peer review, then writes the verdict in five sections: where the board agrees, where it splits, what was caught in peer review, the recommendation, and the one thing to do first.
 
-## Setup
+---
 
-Requires Node 24 (pinned in `.mise.toml`) and pnpm 10.
+## Quick start
 
 ```bash
 pnpm install
-cp .env.example .env.local
-# put OPENROUTER_API_KEY=sk-or-v1-... into .env.local
+cp .env.example .env.local        # paste OPENROUTER_API_KEY=sk-or-v1-...
 pnpm dev
 ```
 
-Open http://localhost:3000.
+Open [http://localhost:3000](http://localhost:3000).
 
-Get an OpenRouter key at https://openrouter.ai/keys. Top up credits before running — one full three-stage round on a hard question can cost 50k–100k tokens across all models.
+Get a key at [openrouter.ai/keys](https://openrouter.ai/keys). Top up $5–10 of credits before your first round — a meaty question runs 50k–100k tokens across the whole board.
 
-## Scripts
+---
 
-| Command | What it does |
-|---|---|
-| `pnpm dev` | Next.js dev server with Turbopack |
-| `pnpm build` | Production build |
-| `pnpm start` | Run the production build |
-| `pnpm lint` | ESLint |
-| `pnpm typecheck` | `tsc --noEmit` |
+## The default board
 
-## Project layout
+| Seat     | Model                       | Brings                          |
+| -------- | --------------------------- | ------------------------------- |
+| `opus`   | `anthropic/claude-opus-4`   | Long-context reasoning, nuance  |
+| `gemini` | `google/gemini-2.5-pro`     | Adversarial framing, breadth    |
+| `qwen`   | `qwen/qwen3-max`            | Outside the western consensus   |
+
+Chairman by default: `opus`. Pick a different chairman per round in the UI, or override the whole roster from `.env.local`:
+
+```bash
+BOARD_ROSTER="opus:anthropic/claude-opus-4:Opus,sonnet:anthropic/claude-sonnet-4.5:Sonnet,grok:x-ai/grok-4:Grok"
+CHAIRMAN_ID=sonnet
+```
+
+Any model OpenRouter routes works. Pick three. Pick eight.
+
+---
+
+## When to convene the board
+
+> Use it when **being wrong is expensive** and the answer **isn't lookup-able**.
+
+**Worth the board:**
+
+- *Price this product at $97 or $497?*
+- *Migrate from Postgres to ClickHouse, or shard the writes?*
+- *Hire a senior IC or two juniors?*
+- *Is this landing-page copy strong enough to launch?*
+- *Pivot to the vertical SaaS, or stay broad?*
+
+**Not worth the board:**
+
+- *What's the capital of France?* — one answer exists.
+- *Write me a tweet.* — creation task, one model is fine.
+- *Summarise this PDF.* — processing, not judgement.
+
+The board is wasted on factual lookups and overkill on creative tasks. Save it for decisions.
+
+---
+
+## What you actually get
+
+- **Parallel streaming** — every model answers at once; you watch the slowest one, not the sum.
+- **Real peer review** — anonymised labels (A/B/C), structured rankings validated by Zod, explicit blind-spot detection.
+- **A real verdict** — opinionated synthesis, not a both-sides essay. Ends in a single concrete next step.
+- **Local transcripts** — every run lands in `data/transcripts/{timestamp}.json`. Yours. On your disk. No cloud anything.
+- **Configurable roster** — env var or in-UI checkboxes. Two-minimum, no upper bound.
+- **Zero accounts, zero telemetry, zero upsells.**
+
+---
+
+## Built on
+
+Next.js 16 App Router · React 19 · TypeScript strict · Tailwind v4 · Vercel AI SDK pointed at OpenRouter through the OpenAI-compatible client · Zod for structured output. No state library, no UI kit, no dashboard. Around 600 lines of code, end to end.
 
 ```
 src/
 ├── app/
-│   ├── layout.tsx
-│   ├── page.tsx               # main UI
-│   ├── globals.css
+│   ├── page.tsx                 the console
 │   └── api/
-│       ├── stage1/route.ts    # parallel streaming answers
-│       ├── stage2/route.ts    # anonymised peer review
-│       └── stage3/route.ts    # chairman synthesis
+│       ├── stage1/route.ts      parallel streaming (NDJSON)
+│       ├── stage2/route.ts      anonymised review (Zod schema)
+│       └── stage3/route.ts      chairman synthesis (text stream)
 ├── lib/
-│   ├── board.ts               # roster + chairman defaults
-│   ├── openrouter.ts          # AI SDK client
-│   ├── anonymize.ts           # shuffle / un-shuffle helper
-│   ├── transcript.ts          # save runs to data/transcripts/
+│   ├── board.ts                 roster & chairman config
+│   ├── openrouter.ts            AI SDK ↔ OpenRouter
+│   ├── anonymize.ts             Fisher-Yates + reveal mapping
+│   ├── transcript.ts            save runs to disk
 │   └── prompts/
 │       ├── reviewer.ts
 │       └── chairman.ts
 └── components/
-    ├── BoardInput.tsx
-    ├── StageOneTabs.tsx
-    ├── StageTwoGrid.tsx
-    ├── StageThreeVerdict.tsx
-    └── BoardSettings.tsx
-data/transcripts/              # gitignored, one JSON per run
+    └── BoardConsole.tsx         client orchestrator
 ```
 
-## What questions benefit from the board
+---
 
-Use it when being wrong is expensive and there is real uncertainty: pricing decisions, positioning angles, framework / architecture choices, hire-vs-build, pivot-or-stay, "is this idea fatally flawed". Skip it for factual lookups, trivial yes/no questions, and creation tasks (it will not write a tweet better than one model alone).
+## Scripts
+
+```bash
+pnpm dev          turbopack dev server
+pnpm build        production build
+pnpm start        serve the build
+pnpm lint         eslint
+pnpm typecheck    tsc --noEmit
+pnpm format       prettier --write
+```
+
+---
+
+## Status
+
+This is a tool, not a product. No roadmap, no issue queue, no PR review window. Fork it. Rip out what you don't like. Hand the rest to one of your models when you want it changed — the whole codebase fits in a single prompt.
+
+---
+
+## License
+
+MIT.
