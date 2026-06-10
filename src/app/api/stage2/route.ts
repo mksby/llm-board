@@ -4,6 +4,7 @@ import { anonymize } from '@/lib/anonymize';
 import { modelFor } from '@/lib/openrouter';
 import { buildReviewerSystemPrompt, buildReviewerUserPrompt } from '@/lib/prompts/reviewer';
 import {
+  computeRetryWait,
   extractErrorMessage,
   getRetryAfterMs,
   isRetryableError,
@@ -68,7 +69,13 @@ export async function POST(req: Request) {
   const anonymized = shuffled.map((s) => ({ key: s.key, text: s.value }));
 
   const reviews = await Promise.all(
-    board.map(async (member) => {
+    board.map(async (member, idx) => {
+      // Same stagger as stage 1 — keeps shared upstreams from seeing a fresh
+      // burst at the moment we move from answers to reviews.
+      if (idx > 0) {
+        await new Promise((r) => setTimeout(r, idx * RETRY_POLICY.staggerBetweenMembersMs));
+      }
+
       let lastErr: unknown;
       let totalWaitMs = 0;
       for (let attempt = 1; attempt <= RETRY_POLICY.maxAttempts; attempt++) {
@@ -84,10 +91,7 @@ export async function POST(req: Request) {
         } catch (err) {
           lastErr = err;
           if (!isRetryableError(err) || attempt >= RETRY_POLICY.maxAttempts) break;
-          const waitMs = Math.min(
-            getRetryAfterMs(err) ?? RETRY_POLICY.defaultBackoffMs(attempt),
-            RETRY_POLICY.perAttemptCapMs,
-          );
+          const waitMs = computeRetryWait(getRetryAfterMs(err), attempt);
           if (totalWaitMs + waitMs > RETRY_POLICY.totalCapMs) break;
           totalWaitMs += waitMs;
           await new Promise((r) => setTimeout(r, waitMs));

@@ -13,12 +13,41 @@ export const RETRY_POLICY = {
   /** Total attempts including the initial call. */
   maxAttempts: 5,
   /** Hard upper bound on a single wait, so a misbehaving header can't park us forever. */
-  perAttemptCapMs: 45_000,
+  perAttemptCapMs: 60_000,
   /** Hard upper bound on cumulative waiting across all retries. */
-  totalCapMs: 120_000,
+  totalCapMs: 180_000,
   /** Default exponential backoff when the server does not advertise a Retry-After. */
   defaultBackoffMs: (attempt: number) => Math.min(2_000 * Math.pow(2, attempt - 1), 30_000),
+  /**
+   * Delay between successive members' initial requests. Spreads the burst so
+   * shared upstream providers (Venice, Crucible, …) don't get N simultaneous
+   * hits and start handing out 429s pre-emptively.
+   */
+  staggerBetweenMembersMs: 600,
+  /**
+   * Safety margin added on top of the upstream's Retry-After. The rate-limit
+   * window doesn't always clear exactly when the header promises it will.
+   */
+  retryAfterMarginMs: 1_500,
+  /**
+   * Max random extra wait added to every retry. Prevents synchronized retry
+   * waves: when N members hit the same upstream at t=0 and all get told
+   * "retry in 25s", they'd otherwise all retry at exactly t=25s.
+   */
+  retryJitterMs: 2_500,
 } as const;
+
+/** Compute the actual wait for a retry, mixing in margin and jitter. */
+export function computeRetryWait(
+  advisedMs: number | undefined,
+  attempt: number,
+): number {
+  const base = advisedMs
+    ? advisedMs + RETRY_POLICY.retryAfterMarginMs
+    : RETRY_POLICY.defaultBackoffMs(attempt);
+  const jitter = Math.random() * RETRY_POLICY.retryJitterMs;
+  return Math.min(base + jitter, RETRY_POLICY.perAttemptCapMs);
+}
 
 type Maybe<T> = T | null | undefined;
 

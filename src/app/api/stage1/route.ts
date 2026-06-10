@@ -2,6 +2,7 @@ import { streamText } from 'ai';
 import { advisorSystemPrompt } from '@/lib/lenses';
 import { modelFor } from '@/lib/openrouter';
 import {
+  computeRetryWait,
   extractErrorMessage,
   getRetryAfterMs,
   isRetryableError,
@@ -34,7 +35,14 @@ export async function POST(req: Request) {
       };
 
       await Promise.all(
-        board.map(async (member) => {
+        board.map(async (member, idx) => {
+          // Stagger initial dispatch so shared upstream providers (Venice,
+          // Crucible, …) don't see N simultaneous requests and start
+          // pre-emptively rate-limiting.
+          if (idx > 0) {
+            await new Promise((r) => setTimeout(r, idx * RETRY_POLICY.staggerBetweenMembersMs));
+          }
+
           send({ type: 'start', memberId: member.id });
           const system = advisorSystemPrompt(member.lens);
 
@@ -68,11 +76,7 @@ export async function POST(req: Request) {
 
               if (!isRetryableError(err) || attempt >= RETRY_POLICY.maxAttempts) break;
 
-              const advisedMs = getRetryAfterMs(err);
-              const waitMs = Math.min(
-                advisedMs ?? RETRY_POLICY.defaultBackoffMs(attempt),
-                RETRY_POLICY.perAttemptCapMs,
-              );
+              const waitMs = computeRetryWait(getRetryAfterMs(err), attempt);
               if (totalWaitMs + waitMs > RETRY_POLICY.totalCapMs) break;
               totalWaitMs += waitMs;
 
