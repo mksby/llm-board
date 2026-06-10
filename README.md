@@ -14,13 +14,15 @@ Requests are routed through OpenRouter, so the panel composition is a config str
 
 **Stage 2 — Anonymous peer review.** Responses are re-labelled `A`, `B`, `C`, … by Fisher-Yates shuffle. Every member receives the full anonymised set and returns a `generateObject` payload (Zod-validated) containing rankings, the strongest/weakest letter with justification, and one point every answer missed.
 
-**Stage 3 — Chairman synthesis.** The designated chairman receives the de-anonymised answers and every peer review, then streams a markdown verdict in five sections: agreements, splits, blind spots caught in review, recommendation, first concrete step.
+**Stage 3 — Chairman synthesis.** The designated chairman receives the de-anonymised answers and every peer review, then streams a markdown verdict in five sections: agreements, splits, blind spots caught in review, recommendation, first step.
 
 The panel size is flexible. Minimum two members; maximum twenty-six (limited by the anonymisation alphabet). Three is the default.
 
 ---
 
 ## Quick start
+
+Requires Node 24 (pinned in `.mise.toml`) and pnpm 10 (pinned in `package.json` via `packageManager`).
 
 ```bash
 pnpm install
@@ -148,7 +150,7 @@ src/
     └── StageThreeVerdict.tsx    streamed chairman verdict
 ```
 
-Once stage 3 finishes streaming, the route writes `data/transcripts/{timestamp}.json` containing the question, the panel roster (including any assigned lenses), every answer, the anonymisation reveal mapping, every peer review, and the chairman's verdict. The transcript id is also surfaced on the response in the `X-Transcript-Id` header so the client can correlate runs to files.
+Once stage 3 finishes streaming, the route writes `data/transcripts/{timestamp}.json` containing the question, the panel roster (including any assigned lenses), every answer, the anonymisation reveal mapping, every peer review, and the chairman's verdict. The transcript id is also surfaced on the response in the `X-Transcript-Id` header for clients that want to correlate runs to the on-disk file.
 
 ---
 
