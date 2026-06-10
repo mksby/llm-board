@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import type { LensId } from './lenses';
 
 const TRANSCRIPTS_DIR = path.resolve(process.cwd(), 'data', 'transcripts');
 
@@ -7,7 +8,7 @@ export interface Transcript {
   id: string;
   createdAt: string;
   question: string;
-  board: Array<{ id: string; model: string; label: string }>;
+  board: Array<{ id: string; model: string; label: string; lens?: LensId }>;
   chairmanId: string;
   stage1: Array<{ id: string; text: string }>;
   stage2: {

@@ -2,6 +2,7 @@ import { streamText } from 'ai';
 import { findMember } from '@/lib/board';
 import { modelFor } from '@/lib/openrouter';
 import { buildChairmanSystemPrompt, buildChairmanUserPrompt } from '@/lib/prompts/chairman';
+import { newTranscriptId, writeTranscript, type Transcript } from '@/lib/transcript';
 import { Stage3Request } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { question, board, chairmanId, responses, reviews } = parsed.data;
+  const { question, board, chairmanId, responses, reviews, reveal } = parsed.data;
 
   let chairman;
   try {
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
     };
   });
 
+  const transcriptId = newTranscriptId();
+  const createdAt = new Date().toISOString();
+
   const result = streamText({
     model: modelFor(chairman.model),
     system: buildChairmanSystemPrompt(),
@@ -51,7 +55,37 @@ export async function POST(req: Request) {
       responsesById,
       reviews: reviewsForPrompt,
     }),
+    onFinish: async ({ text }) => {
+      const transcript: Transcript = {
+        id: transcriptId,
+        createdAt,
+        question,
+        board: board.map((m) => ({
+          id: m.id,
+          model: m.model,
+          label: m.label,
+          ...(m.lens ? { lens: m.lens } : {}),
+        })),
+        chairmanId,
+        stage1: responsesById.map(({ id, text: t }) => ({ id, text: t })),
+        stage2: { reveal, reviews },
+        stage3: { verdict: text },
+      };
+      try {
+        await writeTranscript(transcript);
+      } catch (err) {
+        // Don't surface to the client — the verdict already streamed. Log and
+        // move on; the transcript is a nice-to-have, not part of the contract.
+        console.error('[stage3] failed to persist transcript', err);
+      }
+    },
   });
 
-  return result.toTextStreamResponse();
+  return result.toTextStreamResponse({
+    headers: {
+      // Surface the transcript id so clients can correlate the verdict with
+      // the on-disk file after the stream completes.
+      'X-Transcript-Id': transcriptId,
+    },
+  });
 }

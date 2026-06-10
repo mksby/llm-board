@@ -60,6 +60,8 @@ export const Stage3Request = z.object({
       payload: ReviewPayload,
     }),
   ),
+  /** Anonymisation mapping from stage 2. Passed through so the persisted transcript captures who was hidden behind which letter. */
+  reveal: z.record(z.string(), z.string()),
 });
 
 export type Stage1Event =

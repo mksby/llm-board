@@ -158,6 +158,7 @@ export function BoardConsole({ initialBoard, initialChairmanId }: Props) {
             chairmanId: chairman.id,
             responses: responsesForReview,
             reviews: stage2Body.reviews,
+            reveal: stage2Body.reveal,
           }),
         });
         if (!res.ok || !res.body) {
