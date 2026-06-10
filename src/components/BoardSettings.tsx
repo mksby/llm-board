@@ -1,5 +1,20 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { BoardMember } from '@/lib/board';
 import { LENSES, type LensId } from '@/lib/lenses';
 
@@ -11,6 +26,10 @@ interface Props {
   onActiveChange: (next: readonly BoardMember[]) => void;
   onChairmanChange: (id: string) => void;
 }
+
+// Radix Select doesn't allow empty-string values, so we use a sentinel for
+// "no lens assigned" and translate at the boundary.
+const LENS_NONE = '__none__';
 
 export function BoardSettings({
   fullRoster,
@@ -31,7 +50,11 @@ export function BoardSettings({
 
   function setLens(memberId: string, lens: LensId | undefined) {
     const next = active.map((m): BoardMember =>
-      m.id === memberId ? (lens ? { ...m, lens } : { id: m.id, model: m.model, label: m.label }) : m,
+      m.id === memberId
+        ? lens
+          ? { ...m, lens }
+          : { id: m.id, model: m.model, label: m.label }
+        : m,
     );
     onActiveChange(next);
   }
@@ -40,76 +63,86 @@ export function BoardSettings({
   const lensSummary = active.filter((m) => m.lens).length;
 
   return (
-    <details className="border-board-border bg-board-surface rounded-md border px-4 py-3">
-      <summary className="text-board-muted hover:text-board-text cursor-pointer text-xs select-none">
-        Board settings ({active.length} members · {lensSummary > 0 ? `${lensSummary} with lens · ` : ''}
-        chairman: {chairmanLabel})
-      </summary>
-      <div className="mt-3 flex flex-col gap-4 text-xs">
-        <fieldset>
-          <legend className="text-board-muted mb-1.5">Chairman</legend>
-          <select
-            className="border-board-border bg-board-bg w-full max-w-xs rounded-md border px-2 py-1"
-            value={chairmanId}
-            disabled={disabled}
-            onChange={(e) => onChairmanChange(e.target.value)}
-          >
-            {active.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </fieldset>
-        <fieldset>
-          <legend className="text-board-muted mb-1.5">Members &amp; lenses</legend>
-          <table className="w-full border-separate border-spacing-y-1">
-            <tbody>
+    <Collapsible className="bg-card rounded-md border">
+      <CollapsibleTrigger className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between px-4 py-3 text-xs">
+        <span>
+          Board settings ({active.length} members
+          {lensSummary > 0 && ` · ${lensSummary} with lens`}
+          {' · '}chairman: {chairmanLabel})
+        </span>
+        <ChevronDown className="size-4" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="border-t px-4 py-3">
+        <div className="flex flex-col gap-4 text-xs">
+          <div>
+            <Label className="text-muted-foreground mb-1.5 block">Chairman</Label>
+            <Select
+              value={chairmanId}
+              onValueChange={(v) => v && onChairmanChange(v)}
+              disabled={disabled}
+            >
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {active.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label className="text-muted-foreground mb-1.5 block">Members &amp; lenses</Label>
+            <ul className="space-y-2">
               {fullRoster.map((m) => {
                 const checked = activeIds.has(m.id);
                 const activeMember = active.find((x) => x.id === m.id);
                 return (
-                  <tr key={m.id}>
-                    <td className="w-6 align-middle">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={disabled || (checked && active.length <= 2)}
-                        onChange={() => toggle(m)}
-                      />
-                    </td>
-                    <td className="align-middle">
-                      <div>{m.label}</div>
-                      <div className="text-board-muted font-mono text-[10px]">{m.model}</div>
-                    </td>
-                    <td className="w-44 align-middle">
-                      <select
-                        className="border-board-border bg-board-bg w-full rounded-md border px-2 py-1 disabled:opacity-40"
-                        value={activeMember?.lens ?? ''}
-                        disabled={disabled || !checked}
-                        onChange={(e) =>
-                          setLens(m.id, e.target.value === '' ? undefined : (e.target.value as LensId))
-                        }
-                      >
-                        <option value="">no lens</option>
+                  <li key={m.id} className="flex items-center gap-3">
+                    <Checkbox
+                      checked={checked}
+                      disabled={disabled || (checked && active.length <= 2)}
+                      onCheckedChange={() => toggle(m)}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate">{m.label}</div>
+                      <div className="text-muted-foreground truncate font-mono text-[10px]">
+                        {m.model}
+                      </div>
+                    </div>
+                    <Select
+                      value={activeMember?.lens ?? LENS_NONE}
+                      disabled={disabled || !checked}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        setLens(m.id, v === LENS_NONE ? undefined : (v as LensId));
+                      }}
+                    >
+                      <SelectTrigger className="w-40 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={LENS_NONE}>no lens</SelectItem>
                         {Object.values(LENSES).map((lens) => (
-                          <option key={lens.id} value={lens.id}>
+                          <SelectItem key={lens.id} value={lens.id}>
                             {lens.label}
-                          </option>
+                          </SelectItem>
                         ))}
-                      </select>
-                    </td>
-                  </tr>
+                      </SelectContent>
+                    </Select>
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
-          <p className="text-board-muted mt-1 text-[10px]">
-            Minimum 2 members. A lens overlays a thinking style on top of the model — leave empty
-            to let the model answer in its default voice.
-          </p>
-        </fieldset>
-      </div>
-    </details>
+            </ul>
+            <p className="text-muted-foreground mt-2 text-[10px]">
+              Minimum 2 members. A lens overlays a thinking style on top of the model.
+            </p>
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

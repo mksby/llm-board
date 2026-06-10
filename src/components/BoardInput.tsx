@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Props {
   disabled: boolean;
@@ -9,7 +11,6 @@ interface Props {
 
 export function BoardInput({ disabled, onSubmit }: Props) {
   const [value, setValue] = useState('');
-
   const canSubmit = !disabled && value.trim().length > 0;
 
   return (
@@ -21,8 +22,7 @@ export function BoardInput({ disabled, onSubmit }: Props) {
         onSubmit(value.trim());
       }}
     >
-      <textarea
-        className="border-board-border bg-board-surface focus:border-board-accent w-full resize-y rounded-md border px-3 py-2 text-sm focus:outline-none"
+      <Textarea
         placeholder="Ask the board a hard question..."
         rows={5}
         value={value}
@@ -34,16 +34,13 @@ export function BoardInput({ disabled, onSubmit }: Props) {
             onSubmit(value.trim());
           }
         }}
+        className="min-h-[8rem] resize-y"
       />
       <div className="flex items-center justify-between">
-        <p className="text-board-muted text-xs">Cmd/Ctrl+Enter to submit</p>
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="bg-board-accent rounded-md px-4 py-1.5 text-sm font-medium text-black disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <p className="text-muted-foreground text-xs">Cmd/Ctrl+Enter to submit</p>
+        <Button type="submit" disabled={!canSubmit}>
           Convene the board
-        </button>
+        </Button>
       </div>
     </form>
   );
