@@ -17,7 +17,10 @@ const DEFAULT_BOARD: readonly BoardMember[] = [
 
 /**
  * Parse an env override of the form
- *   `id:slug:label,id:slug:label,...`
+ *   `id|slug|label,id|slug|label,...`
+ *
+ * `|` separates the three fields so model slugs that contain `:` (e.g.
+ * OpenRouter `:free` variants) round-trip correctly.
  *
  * Returns `null` on any malformed entry so callers fall back to the default.
  */
@@ -30,11 +33,9 @@ function parseRoster(raw: string | undefined): BoardMember[] | null {
   if (parts.length === 0) return null;
   const out: BoardMember[] = [];
   for (const part of parts) {
-    const segments = part.split(':');
-    if (segments.length < 3) return null;
-    const id = segments[0]!.trim();
-    const model = segments[1]!.trim();
-    const label = segments.slice(2).join(':').trim();
+    const segments = part.split('|').map((s) => s.trim());
+    if (segments.length !== 3) return null;
+    const [id, model, label] = segments;
     if (!id || !model || !label) return null;
     out.push({ id, model, label });
   }
