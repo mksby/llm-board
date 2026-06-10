@@ -14,8 +14,8 @@ export interface BoardMember {
 export type BoardMemberId = BoardMember['id'];
 
 const DEFAULT_BOARD: readonly BoardMember[] = [
-  { id: 'opus', model: 'anthropic/claude-opus-4', label: 'Claude Opus 4' },
-  { id: 'gemini', model: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { id: 'opus', model: 'anthropic/claude-opus-4.7', label: 'Claude Opus 4.7' },
+  { id: 'gemini', model: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
   { id: 'qwen', model: 'qwen/qwen3-max', label: 'Qwen 3 Max' },
 ];
 
