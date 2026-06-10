@@ -1,3 +1,5 @@
+import { isLensId, type LensId } from './lenses';
+
 export interface BoardMember {
   /** Stable internal id, used as a key and in env overrides. */
   id: string;
@@ -5,6 +7,8 @@ export interface BoardMember {
   model: string;
   /** Human-readable label for the UI. */
   label: string;
+  /** Optional thinking-style overlay applied via system prompt in stage 1. */
+  lens?: LensId;
 }
 
 export type BoardMemberId = BoardMember['id'];
@@ -17,10 +21,12 @@ const DEFAULT_BOARD: readonly BoardMember[] = [
 
 /**
  * Parse an env override of the form
- *   `id|slug|label,id|slug|label,...`
+ *   `id|slug|label[|lens],id|slug|label[|lens],...`
  *
- * `|` separates the three fields so model slugs that contain `:` (e.g.
- * OpenRouter `:free` variants) round-trip correctly.
+ * `|` separates fields so model slugs that contain `:` (e.g. OpenRouter
+ * `:free` variants) round-trip correctly. The lens field is optional; when
+ * present it must be one of the known `LensId` values, otherwise the whole
+ * roster is rejected and the default board is used.
  *
  * Returns `null` on any malformed entry so callers fall back to the default.
  */
@@ -34,10 +40,15 @@ function parseRoster(raw: string | undefined): BoardMember[] | null {
   const out: BoardMember[] = [];
   for (const part of parts) {
     const segments = part.split('|').map((s) => s.trim());
-    if (segments.length !== 3) return null;
-    const [id, model, label] = segments;
+    if (segments.length < 3 || segments.length > 4) return null;
+    const [id, model, label, lensRaw] = segments;
     if (!id || !model || !label) return null;
-    out.push({ id, model, label });
+    let lens: LensId | undefined;
+    if (lensRaw) {
+      if (!isLensId(lensRaw)) return null;
+      lens = lensRaw;
+    }
+    out.push(lens ? { id, model, label, lens } : { id, model, label });
   }
   return out;
 }

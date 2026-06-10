@@ -1,9 +1,13 @@
 import { z } from 'zod';
+import { LENS_IDS } from './lenses';
+
+export const LensIdSchema = z.enum(LENS_IDS);
 
 export const BoardMemberPayload = z.object({
   id: z.string().min(1),
   model: z.string().min(1),
   label: z.string().min(1),
+  lens: LensIdSchema.optional(),
 });
 
 export const ReviewPayload = z.object({
