@@ -130,31 +130,38 @@ For factual lookups, summarisation, and creative generation, a single model is f
 
 ## Architecture
 
-Next.js 16 App Router, React 19, TypeScript strict, Tailwind v4. Vercel AI SDK pointed at OpenRouter through the OpenAI-compatible client. Zod for request validation and structured output. No state library, no UI kit. ~600 lines of TypeScript, end to end.
+Next.js 16 App Router, React 19, TypeScript strict, Tailwind v4. Vercel AI SDK pointed at OpenRouter through the OpenAI-compatible client. Zod for request validation and structured output. No state library, no UI kit. ~1 400 lines of TypeScript, end to end.
 
 ```
 src/
 ├── app/
+│   ├── layout.tsx               root layout
 │   ├── page.tsx                 console
+│   ├── globals.css              tailwind v4 + design tokens
 │   └── api/
 │       ├── stage1/route.ts      parallel streaming (NDJSON)
 │       ├── stage2/route.ts      anonymised review (Zod schema)
-│       └── stage3/route.ts      chairman synthesis (text stream)
+│       └── stage3/route.ts      chairman synthesis (text stream, persists transcript)
 ├── lib/
-│   ├── board.ts                 roster + chairman config
+│   ├── board.ts                 roster + chairman config + env parser
 │   ├── openrouter.ts            AI SDK ↔ OpenRouter
 │   ├── anonymize.ts             Fisher-Yates + reveal mapping
+│   ├── lenses.ts                thinking-style system prompts
 │   ├── transcript.ts            persist runs to disk
 │   ├── types.ts                 shared Zod schemas
-│   ├── lenses.ts                thinking-style system prompts
 │   └── prompts/
 │       ├── reviewer.ts
 │       └── chairman.ts
 └── components/
-    └── BoardConsole.tsx         client orchestrator
+    ├── BoardConsole.tsx         client orchestrator (runs the 3 stages)
+    ├── BoardInput.tsx           textarea + submit
+    ├── BoardSettings.tsx        member toggles, chairman, lens dropdowns
+    ├── StageOneTabs.tsx         per-member streamed-answer tabs
+    ├── StageTwoGrid.tsx         anonymisation reveal + ranked grid
+    └── StageThreeVerdict.tsx    streamed chairman verdict
 ```
 
-Every round produces a `data/transcripts/{timestamp}.json` containing the question, the panel roster, all answers, the anonymisation reveal mapping, all peer reviews, and the chairman's verdict.
+Once stage 3 finishes streaming, the route writes `data/transcripts/{timestamp}.json` containing the question, the panel roster (including any assigned lenses), every answer, the anonymisation reveal mapping, every peer review, and the chairman's verdict. The transcript id is also surfaced on the response in the `X-Transcript-Id` header so the client can correlate runs to files.
 
 ---
 
