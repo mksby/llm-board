@@ -1,4 +1,5 @@
 import { streamText } from 'ai';
+import { advisorSystemPrompt } from '@/lib/lenses';
 import { modelFor } from '@/lib/openrouter';
 import { Stage1Request, type Stage1Event } from '@/lib/types';
 
@@ -30,8 +31,10 @@ export async function POST(req: Request) {
         board.map(async (member) => {
           try {
             send({ type: 'start', memberId: member.id });
+            const system = advisorSystemPrompt(member.lens);
             const result = streamText({
               model: modelFor(member.model),
+              ...(system ? { system } : {}),
               prompt: question,
             });
             for await (const chunk of result.textStream) {
